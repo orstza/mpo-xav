@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "ipxe_xav"
+name = "mpo-xav"
 version = "0.1.0"
