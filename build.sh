@@ -17,7 +17,7 @@ install_deps() {
                 "apt")
                         pkgs=(
                                 git rustup
-                                # ipxe dependencies
+                                # ipxe build & corss-compile dependencies
                                 build-essential binutils perl liblzma-dev mtools 
                                 gcc-x86-64-linux-gnu gcc-i686-linux-gnu 
                                 gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
@@ -41,14 +41,24 @@ install_deps() {
                 #         )
                 #         needed=$(pacman -T "${pkgs[@]}") || ${priv:-} pacman -S --needed --noconfirm ${needed}
                 #         ;;
-                # "dnf")
-                #         pkgs=(
-                #                 make gcc binutils glibc-devel.i686 perl xz-devel mtools git rustup
-                #                 gcc-x86_64-linux-gnu gcc-aarch64-linux-gnu gcc-arm-linux-gnu
-                #                 gcc-riscv64-linux-gnu gcc-loongarch64-linux-gnu
-                #         )
-                #         ${priv:-} dnf install -y "${pkgs[@]}"
-                #         ;;
+                "dnf")
+                        pkgs=(
+                                git rustup
+                                # ipxe build & corss-compilation dependencies
+		                make gcc binutils glibc-devel.i686 perl xz-devel mtools
+		                gcc-x86_64-linux-gnu gcc-arm-linux-gnu gcc-aarch64-linux-gnu
+		                gcc-riscv64-linux-gnu gcc-loongarch64-linux-gnu
+                                # mkosi dependencies
+                                python3 python3-pefile python3-cryptography # python and zipapp
+		                cpio kmod zstd xz # kernel & initrd assembly
+		                systemd systemd-ukify systemd-boot-unsigned systemd-container # boot & uki generation
+		                util-linux dosfstools e2fsprogs btrfs-progs erofs-utils # disk & partitioning
+		                dnf distribution-gpg-keys gnupg2 # fedora bootstrap
+                                shadow-utils # rootless sandbox
+                                qemu-system-x86 edk2-ovmf ipxe-roms-qemu virtiofsd # VM for mkosi development
+                        )
+                        ${priv:-} dnf install -y "${pkgs[@]}"
+                        ;;
                 "emerge")
                         echo "You need sys-devel/gcc sys-devel/binutils sys-devel/make"
                         echo "dev-lang/perl app-arch/xz-utils sys-fs/mtools dev-vcs/git"
