@@ -25,3 +25,4 @@ rustc-ice-*.txt
 
 ipxeboot
 mkosi_lab/mkosi
+mkosi_lab/images

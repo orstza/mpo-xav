@@ -1,0 +1,21 @@
+mkosi --profile=ipxe,erofs,split-k-i-kmi serve
+
+# boot.ipxe should be in same directory as the compiled image/kernel/kernel_modules
+
+#!ipxe
+dhcp
+
+set base-url http://10.0.2.2:8081
+
+kernel ${base-url}/image.vmlinuz console=ttyS0 console=tty0 rd.systemd.pull=raw,machine,verify=no,blockdev:rootdisk:${base-url}/image.raw root=gpt-auto rd.systemd.wants=systemd-networkd-wait-online.service systemd.firstboot=0
+initrd ${base-url}/initrd.cpio.zst
+initrd ${base-url}/image.kernel-modules-initrd
+boot
+
+qemu-system-x86_64 \
+  -enable-kvm \
+  -m 2G \
+  -nographic \
+  -boot n \
+  -netdev user,id=net0,bootfile=http://10.0.2.2:8081/boot.ipxe \
+  -device virtio-net-pci,netdev=net0

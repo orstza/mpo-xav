@@ -1,0 +1,1 @@
+./mkosi build --profile ipxe,erofs,split-k-i-kmi 

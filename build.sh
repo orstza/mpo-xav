@@ -17,7 +17,7 @@ install_deps() {
                 "apt")
                         pkgs=(
                                 git rustup
-                                # ipxe build & corss-compile dependencies
+                                # ipxe build & cross-compile dependencies
                                 build-essential binutils perl liblzma-dev mtools 
                                 gcc-x86-64-linux-gnu gcc-i686-linux-gnu 
                                 gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
@@ -44,7 +44,7 @@ install_deps() {
                 "dnf")
                         pkgs=(
                                 git rustup
-                                # ipxe build & corss-compilation dependencies
+                                # ipxe build & cross-compilation dependencies
 		                make gcc binutils glibc-devel.i686 perl xz-devel mtools
 		                gcc-x86_64-linux-gnu gcc-arm-linux-gnu gcc-aarch64-linux-gnu
 		                gcc-riscv64-linux-gnu gcc-loongarch64-linux-gnu
