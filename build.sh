@@ -16,10 +16,20 @@ install_deps() {
         case "${pm}" in
                 "apt")
                         pkgs=(
-                                build-essential binutils perl liblzma-dev mtools git rustup
+                                git rustup
+                                # ipxe dependencies
+                                build-essential binutils perl liblzma-dev mtools 
                                 gcc-x86-64-linux-gnu gcc-i686-linux-gnu 
                                 gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf
                                 gcc-riscv64-linux-gnu gcc-loongarch64-linux-gnu
+                                # mkosi dependencies
+                                python3 python3-venv python3-pefile python3-cryptography # python and zipapp
+                                cpio kmod zstd xz-utils # kernel & initrd assembly
+                                systemd systemd-ukify systemd-boot-efi systemd-boot-tools # boot & uki generation
+                                systemd-repart fdisk dosfstools mtools e2fsprogs btrfs-progs erofs-utils # disk & partitioning
+                                dnf distribution-gpg-keys gnupg # fedora bootstrap
+                                uidmap # rootless sandbox
+                                qemu-system ovmf ipxe-qemu virtiofsd # VM for mkosi development
                         )
                         ${priv:-} apt update && ${priv:-} apt install -y "${pkgs[@]}"
                         ;;
@@ -117,9 +127,17 @@ find_bin() {
 clone_ipxe() {
         [[ -d "${BUILD_DIR}/ipxe/.git" ]] && return
 
-        loginf b "Cloning iPXE into ${BUILD_DIR}/ipxe"        
-        git clone --depth 1 https://github.com/ipxe/ipxe.git "${BUILD_DIR}/ipxe"  
+        loginf b "Cloning iPXE into ${BUILD_DIR}/ipxe"
+        git clone --depth 1 https://github.com/ipxe/ipxe.git "${BUILD_DIR}/ipxe"
         loginf g "iPXE clone ready"
+}
+
+# Minimum mkosi version 26, which most distros doesn't have yet.
+clone_mkosi() {
+        [[ -d "${BUILD_DIR}/mkosi/.git" ]] && return
+        loginf b "Cloning mkosi into ${BUILD_DIR}/mkosi"
+        git clone --depth 1 --branch v27.1 https://github.com/systemd/mkosi.git "${BUILD_DIR}/mkosi"
+        loginf g "mkosi clone ready"
 }
 
 verify_target() {
@@ -167,7 +185,12 @@ detect_deps() {
 	HAS_HARD_REQS=true
 	MISSING_DEPS=()
 
-	for i in gcc as ld ar objcopy objdump ranlib nm make perl git nproc; do
+	for i in \
+                gcc as ld ar objcopy objdump ranlib nm make perl git nproc python3 \
+                cpio depmod zstd xz \
+		systemctl ukify bootctl systemd-repart \
+		sfdisk mkfs.fat mcopy mkfs.ext4 mkfs.btrfs mkfs.erofs \
+		dnf gpg newuidmap newgidmap; do
 		[ -n "$(find_bin "${i}")" ] || {
 			HAS_HARD_REQS=false
 			MISSING_DEPS+=("${i}")
@@ -209,6 +232,45 @@ detect_deps() {
 		HAS_HARD_REQS=false
 		MISSING_DEPS+=("loongarch64 toolchain")
 	}
+
+        [ -n "$(find_bin virtiofsd)" ] || [ -x /usr/libexec/virtiofsd ] || [ -x /usr/lib/virtiofsd ] || {
+		HAS_HARD_REQS=false
+		MISSING_DEPS+=("virtiofsd")
+	}
+
+        for mod in venv pefile cryptography; do
+		python3 -c "import ${mod}" > /dev/null 2>&1 || {
+			HAS_HARD_REQS=false
+			MISSING_DEPS+=("python3-${mod}")
+		}
+	done
+
+        compgen -G "/usr/lib/systemd/boot/efi/*.efi.stub" > /dev/null || {
+		HAS_HARD_REQS=false
+		MISSING_DEPS+=("systemd-boot-efi")
+	}
+
+	[ -d /usr/share/distribution-gpg-keys ] || {
+		HAS_HARD_REQS=false
+		MISSING_DEPS+=("distribution-gpg-keys")
+	}
+
+        # [ -f /usr/share/ovmf/OVMF.fd ] || [ -f /usr/share/edk2/ovmf/OVMF_CODE.fd ] || {
+	# 	HAS_HARD_REQS=false
+	# 	MISSING_DEPS+=("ovmf")
+	# }
+
+	# [ -d /usr/lib/ipxe/qemu ] || [ -d /usr/share/ipxe/qemu ] || {
+	# 	HAS_HARD_REQS=false
+	# 	MISSING_DEPS+=("ipxe-qemu")
+	# }
+
+        # for arch in x86_64 i386 aarch64 arm riscv64 loongarch64; do
+	# 	[ -n "$(find_bin "qemu-system-${arch}")" ] || {
+	# 		HAS_HARD_REQS=false
+	# 		MISSING_DEPS+=("qemu-system-${arch}")
+	# 	}
+	# done
 }
 
 build_ipxe_target() {
@@ -277,6 +339,27 @@ EOF
         loginf g "All iPXE architecture targets generated in ${MPO_XAV}/ipxeboot"
 }
 
+build_mkosi() {
+        loginf b "Building mkosi"
+
+        local logfile="/tmp/build_mkosi_$$.log"
+        : > "${logfile}"
+
+        cd "${BUILD_DIR}/mkosi"  
+        tools/generate-zipapp.sh >> "${logfile}" 2>&1
+        builddir/mkosi --version >> "${logfile}" 2>&1
+
+        cp "${BUILD_DIR}/mkosi/builddir/mkosi" "${MPO_XAV}/mkosi_lab" >> "${logfile}" 2>&1 && {
+                rm -f "${logfile}"
+                loginf g "mkosi built successfully"
+        } || {
+                echo -e "\n${R}Build failed! Output:${N}\n"
+                cat "${logfile}"
+                rm -f "${logfile}"
+                exit 1
+        }
+}
+
 main() {
         detect_deps
         "${HAS_HARD_REQS}" || {
@@ -285,7 +368,7 @@ main() {
         }
 
         "${HAS_HARD_REQS}" || {
-                echo -e "\n${R}Missing iPXE build dependencies:${N}"
+                echo -e "\n${R}Missing build dependencies:${N}"
                 printf "  ${R}- %s${N}\n" "${MISSING_DEPS[@]}"
                 exit 1
         }
@@ -293,11 +376,14 @@ main() {
         clone_ipxe
         build_ipxe
 
+        clone_mkosi
+        build_mkosi
+
         # cd "${MPO_XAV}"
 
         # loginf b "Building mpo-xav!"
 
-        # logfile="/tmp/build_cargo_$.log"
+        # logfile="/tmp/build_cargo_$$.log"
         # : > "${logfile}"
 
         # export IPXE_DIR="${BUILD_DIR}/ipxe/src"
