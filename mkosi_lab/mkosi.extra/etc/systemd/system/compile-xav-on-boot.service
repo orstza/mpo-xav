@@ -1,0 +1,16 @@
+[Unit]
+ConditionFirstBoot=yes
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt
+ExecStart=/opt/build.sh
+RemainAfterExit=yes
+TimeoutStartSec=0
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target

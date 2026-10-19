@@ -29,7 +29,7 @@ install_deps() {
                                 systemd-repart fdisk dosfstools mtools e2fsprogs btrfs-progs erofs-utils # disk & partitioning
                                 dnf distribution-gpg-keys gnupg # fedora bootstrap
                                 uidmap # rootless sandbox
-                                qemu-system ovmf ipxe-qemu virtiofsd # VM for mkosi development
+                                # qemu-system ovmf ipxe-qemu virtiofsd # VM for mkosi development
                         )
                         ${priv:-} apt update && ${priv:-} apt install -y "${pkgs[@]}"
                         ;;
@@ -55,7 +55,7 @@ install_deps() {
 		                util-linux dosfstools e2fsprogs btrfs-progs erofs-utils # disk & partitioning
 		                dnf distribution-gpg-keys gnupg2 # fedora bootstrap
                                 shadow-utils # rootless sandbox
-                                qemu-system-x86 edk2-ovmf ipxe-roms-qemu virtiofsd # VM for mkosi development
+                                # qemu-system-x86 edk2-ovmf ipxe-roms-qemu virtiofsd # VM for mkosi development
                         )
                         ${priv:-} dnf install -y "${pkgs[@]}"
                         ;;

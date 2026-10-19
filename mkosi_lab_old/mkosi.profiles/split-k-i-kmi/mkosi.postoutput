@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+cd "$OUTPUTDIR"
+
+PREFIX="${IMAGE_ID:-image}"
+rm -f "${PREFIX}.initrd"
+ln -sf "${PREFIX}.kernel-modules-initrd" kernel-modules
+ln -sf "${PREFIX}.vmlinuz" kernel

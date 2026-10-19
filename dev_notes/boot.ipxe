@@ -1,0 +1,9 @@
+#!ipxe
+dhcp
+
+set base-url http://10.0.2.2:8081
+
+kernel ${base-url}/image.vmlinuz console=ttyS0 console=tty0 rd.systemd.pull=raw,machine,verify=no,blockdev:rootdisk:${base-url}/image.raw root=gpt-auto rd.systemd.wants=systemd-networkd-wait-online.service systemd.firstboot=0
+initrd ${base-url}/initrd.cpio.zst
+initrd ${base-url}/image.kernel-modules-initrd
+boot
